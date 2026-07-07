@@ -1,159 +1,200 @@
-# BoostVPN Bot
+<div align="center">
 
-**[English below](#english)**
+<img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white"/>
+<img src="https://img.shields.io/badge/Telegram-Bot-26A5E4?style=for-the-badge&logo=telegram&logoColor=white"/>
+<img src="https://img.shields.io/badge/3x--UI-VLESS-orange?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/SQLite-Database-003B57?style=for-the-badge&logo=sqlite&logoColor=white"/>
+<img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge"/>
+
+# 🔒 VPN Telegram Bot
+
+**A production-ready Telegram bot for automated VPN subscription management,**  
+**built on top of the [3x-UI](https://github.com/MHSanaei/3x-ui) panel.**
+
+[Features](#-features) · [Architecture](#-architecture) · [Setup](#-setup) · [How it works](#-how-it-works) · [Русский](#-русский)
+
+</div>
 
 ---
 
-## Русский
+## ✨ Features
 
-Telegram-бот для управления VPN-подписками на базе панели [3x-UI](https://github.com/MHSanaei/3x-ui).  
-Написан на Python с использованием `pyTelegramBotAPI`.
+| | Feature | Description |
+|---|---|---|
+| 💳 | **Subscription plans** | Configurable periods and prices, easily extended in `config.py` |
+| 🔗 | **3x-UI integration** | Auto-creates, updates, and removes VLESS clients via the panel REST API |
+| 👥 | **Referral system** | Users earn **+7 days** for every friend they invite |
+| 🎫 | **Promo codes** | Single-use codes that grant any number of bonus days |
+| 🔔 | **Smart notifications** | Automated reminders at **3 days** and **1 day** before expiry |
+| ♻️ | **Expiry handling** | Background worker moves expired clients to stub inbounds automatically |
+| 📢 | **Channel bonus** | **+3 days** awarded for joining the Telegram channel |
+| 🛡 | **Admin panel** | Stats, user list, broadcast, manual day grants, promo management |
 
-### Возможности
+---
 
-- **Подписки** — тарифные планы с настраиваемыми периодами и ценами
-- **Интеграция с 3x-UI** — автоматическое создание/обновление/удаление VLESS-клиентов через REST API панели
-- **Реферальная система** — пользователь получает +7 дней за каждого приглашённого друга
-- **Промокоды** — одноразовые коды с произвольным количеством бонусных дней
-- **Уведомления** — автоматические напоминания за 3 дня и за 1 день до истечения подписки
-- **Управление истёкшими подписками** — фоновый воркер перемещает клиентов в инбаунды-заглушки при истечении
-- **Бонус за подписку на канал** — +3 дня при подтверждении подписки на Telegram-канал
-- **Админ-панель** — статистика, список пользователей, рассылка, ручное начисление дней, управление промокодами
-
-### Стек
-
-| Компонент | Технология |
-|-----------|-----------|
-| Язык | Python 3.10+ |
-| Telegram API | pyTelegramBotAPI |
-| База данных | SQLite (с автомиграциями) |
-| VPN-панель | 3x-UI (VLESS/XTLS) |
-| Фоновые задачи | `threading` |
-
-### Архитектура
+## 🏗 Architecture
 
 ```
-boostvpn-bot/
-├── main.py          # Точка входа, инициализация и запуск
-├── config.py        # Конфигурация (токены, тарифы, URL)
-├── handlers.py      # Все обработчики Telegram (команды + callback-кнопки)
-├── database.py      # Слой работы с SQLite (CRUD + миграции)
-├── xui_client.py    # HTTP-клиент к REST API 3x-UI
-├── keyboards.py     # Фабрики InlineKeyboardMarkup
-├── texts.py         # Генераторы текстов сообщений
-├── workers.py       # Фоновые воркеры (уведомления, истечение)
-└── utils.py         # Вспомогательные функции
+vpn-telegram-bot/
+│
+├── main.py          # Entry point — initializes DB, 3x-UI, bot, and workers
+├── config.py        # All configuration: tokens, tariffs, URLs, inbound IDs
+│
+├── handlers.py      # Telegram command & callback handlers (FSM-based)
+├── keyboards.py     # InlineKeyboardMarkup factories
+├── texts.py         # Dynamic message text generators
+│
+├── database.py      # SQLite layer — CRUD, migrations, transactions
+├── xui_client.py    # HTTP client for 3x-UI REST API
+│
+├── workers.py       # Background threads: notifications + expiry check
+└── utils.py         # Helpers: Russian pluralization, URL builder, name sanitizer
 ```
 
-### Установка
+**Data flow:**
+
+```
+User action (Telegram)
+        │
+        ▼
+  handlers.py  ──────────►  database.py  (SQLite)
+        │
+        ▼
+  xui_client.py ─────────►  3x-UI panel  (REST API)
+        │
+        ▼
+  workers.py   ──────────►  Scheduled tasks (threading)
+```
+
+---
+
+## ⚙️ Setup
+
+### Prerequisites
+- Python **3.10+**
+- A running [3x-UI](https://github.com/MHSanaei/3x-ui) panel
+- A Telegram bot token from [@BotFather](https://t.me/BotFather)
+
+### Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/boostvpn-bot.git
-cd boostvpn-bot
-python -m venv venv && source venv/bin/activate
+git clone https://github.com/Terzi-source/VPN-Telegram-Bot.git
+cd VPN-Telegram-Bot
+python -m venv venv && source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Заполните `config.py`:
+### Configuration
+
+Open `config.py` and fill in your values:
 
 ```python
-BOT_TOKEN = "your_bot_token"       # Токен из @BotFather
-ADMIN_ID  = 123456789              # Ваш Telegram ID
-PANEL_URL = "https://your-panel"   # URL 3x-UI панели
+BOT_TOKEN = "your_bot_token"          # From @BotFather
+ADMIN_ID  = 123456789                 # Your Telegram ID
+
+PANEL_URL      = "https://your-panel" # 3x-UI panel URL
 PANEL_LOGIN    = "admin"
 PANEL_PASSWORD = "password"
-CHANNEL_ID  = -100xxxxxxxxxx       # ID вашего канала
+
+CHANNEL_ID  = -100xxxxxxxxxx          # Your Telegram channel ID
 CHANNEL_URL = "https://t.me/..."
-SUB_BASE_URL = "https://your-domain"
+SUB_BASE_URL = "https://your-domain"  # Base URL for subscription links
+
+EXPIRED_INBOUND_IDS = [6, 7]          # Stub inbound IDs for expired users
+LIMIT_INBOUND_ID    = 9
 ```
+
+### Run
 
 ```bash
 python main.py
 ```
 
-### Как это работает
+---
 
-1. Пользователь нажимает «Оформить подписку» → выбирает тариф → в базе данных продлевается дата истечения и вызывается `xui_client.update_xui_expiry()` для обновления срока в панели
-2. `ensure_user_xui_client()` при первом подключении создаёт UUID-клиента во всех рабочих инбаундах одновременно
-3. Воркер `expiry_check_worker` каждые 6 часов находит пользователей с истёкшей подпиской, удаляет их из рабочих инбаундов и добавляет в инбаунды-заглушки (которые возвращают страницу с предложением продлить)
-4. Воркер `notification_worker` каждый час проверяет приближающиеся даты истечения и шлёт push-уведомления
+## 🔄 How it works
+
+**Subscription purchase**
+```
+User taps "Buy" → selects plan
+    → database extends expiry date
+    → xui_client.update_xui_expiry() syncs deadline to all active inbounds
+```
+
+**First connection**
+```
+ensure_user_xui_client()
+    → generates UUID client
+    → adds it to ALL active inbounds simultaneously
+    → stores sub_id + client_uuid in DB
+```
+
+**Expiry worker** (every 6 hours)
+```
+expiry_check_worker()
+    → finds users where expires_at <= now
+    → removes client from active inbounds
+    → moves client to stub inbounds (shows renewal page)
+    → sends Telegram notification
+```
+
+**Notification worker** (every hour)
+```
+notification_worker()
+    → finds subscriptions expiring in ≤ 3 days
+    → sends push at 3-day threshold  (flag: notified_3d)
+    → sends push at 1-day threshold  (flag: notified_1d)
+```
 
 ---
 
-## English
-
-A Telegram bot for managing VPN subscriptions powered by the [3x-UI](https://github.com/MHSanaei/3x-ui) panel.  
-Built in Python using `pyTelegramBotAPI`.
-
-### Features
-
-- **Subscription plans** — configurable periods and prices
-- **3x-UI integration** — automatic VLESS client creation, renewal, and expiry via the panel's REST API
-- **Referral system** — users earn +7 days for each invited friend
-- **Promo codes** — single-use codes granting custom bonus days
-- **Expiry notifications** — automated reminders 3 days and 1 day before subscription ends
-- **Expired subscription handling** — background worker moves clients to stub inbounds on expiry
-- **Channel subscription bonus** — +3 days for joining the Telegram channel
-- **Admin panel** — statistics, user list, broadcast, manual day grants, promo code management
-
-### Tech Stack
+## 🛠 Tech Stack
 
 | Component | Technology |
 |-----------|-----------|
 | Language | Python 3.10+ |
 | Telegram API | pyTelegramBotAPI |
-| Database | SQLite (with auto-migrations) |
-| VPN panel | 3x-UI (VLESS/XTLS) |
-| Background tasks | `threading` |
+| Database | SQLite with auto-migrations |
+| VPN panel | 3x-UI (VLESS / XTLS-Reality) |
+| Background tasks | Python `threading` |
 
-### Architecture
+---
 
-```
-boostvpn-bot/
-├── main.py          # Entry point — init and launch
-├── config.py        # Configuration (tokens, tariffs, URLs)
-├── handlers.py      # All Telegram handlers (commands + callbacks)
-├── database.py      # SQLite layer (CRUD + migrations)
-├── xui_client.py    # HTTP client for 3x-UI REST API
-├── keyboards.py     # InlineKeyboardMarkup factories
-├── texts.py         # Message text generators
-├── workers.py       # Background workers (notifications, expiry)
-└── utils.py         # Utility helpers
-```
+## 📄 License
 
-### Setup
+[MIT](LICENSE)
+
+---
+
+<div align="center">
+
+## 🇷🇺 Русский
+
+</div>
+
+Telegram-бот для автоматизированного управления VPN-подписками на базе панели [3x-UI](https://github.com/MHSanaei/3x-ui). Написан на Python, используется в реальной эксплуатации.
+
+### Возможности
+
+| | Функция | Описание |
+|---|---|---|
+| 💳 | **Тарифные планы** | Настраиваемые периоды и цены в `config.py` |
+| 🔗 | **Интеграция с 3x-UI** | Авто-создание, обновление и удаление VLESS-клиентов через REST API |
+| 👥 | **Реферальная система** | **+7 дней** за каждого приглашённого друга |
+| 🎫 | **Промокоды** | Одноразовые коды с произвольным количеством бонусных дней |
+| 🔔 | **Умные уведомления** | Напоминания за **3 дня** и **1 день** до истечения подписки |
+| ♻️ | **Управление истёкшими** | Фоновый воркер перемещает клиентов в инбаунды-заглушки |
+| 📢 | **Бонус за канал** | **+3 дня** за подписку на Telegram-канал |
+| 🛡 | **Админ-панель** | Статистика, пользователи, рассылка, начисление дней, промокоды |
+
+### Установка
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/boostvpn-bot.git
-cd boostvpn-bot
+git clone https://github.com/Terzi-source/VPN-Telegram-Bot.git
+cd VPN-Telegram-Bot
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-```
-
-Fill in `config.py`:
-
-```python
-BOT_TOKEN = "your_bot_token"       # Token from @BotFather
-ADMIN_ID  = 123456789              # Your Telegram ID
-PANEL_URL = "https://your-panel"   # 3x-UI panel URL
-PANEL_LOGIN    = "admin"
-PANEL_PASSWORD = "password"
-CHANNEL_ID  = -100xxxxxxxxxx       # Your channel ID
-CHANNEL_URL = "https://t.me/..."
-SUB_BASE_URL = "https://your-domain"
-```
-
-```bash
 python main.py
 ```
 
-### How It Works
-
-1. User taps "Buy Subscription" → picks a plan → the expiry date is extended in the database and `xui_client.update_xui_expiry()` is called to sync the deadline to the panel
-2. `ensure_user_xui_client()` creates a UUID client across all active inbounds simultaneously on first connection
-3. The `expiry_check_worker` runs every 6 hours, finds users with expired subscriptions, removes them from active inbounds, and moves them to stub inbounds (which show a renewal prompt)
-4. The `notification_worker` runs every hour, checks upcoming expiry dates, and sends push reminders at 3-day and 1-day thresholds
-
-### License
-
-MIT
+Заполни `config.py` своими значениями (токен бота, ID панели, URL канала и т.д.) — все поля подписаны комментариями.
